@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ProductVariant {
+  id           Int               @id @default(autoincrement())
+  productId    String
+  productName  String
+  barcode      String?
+  size         String
+  color        String
+  quantity     Int
+  sellingPrice Float
+  costPrice    Float?
+  arrivalDate  DateTime
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  saleItems    SaleItem[]
+  returns      ReturnRecord[]
+  activities   ActivityHistory[]
+
+  @@unique([productId, productName, size, color])
+}
+
+model Sale {
+  id             Int        @id @default(autoincrement())
+  receiptNumber  String     @unique
+  totalAmount    Float
+  discountAmount Float      @default(0)
+  paymentMethod  String     @default("Cash")
+  saleTimestamp  DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  items          SaleItem[]
+}
+
+model SaleItem {
+  id               Int            @id @default(autoincrement())
+  saleId           Int
+  sale             Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productVariantId Int
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  productId        String
+  productName      String
+  size             String
+  color            String
+  quantitySold     Int
+  sellingPrice     Float
+  discountAmount   Float          @default(0)
+  finalAmount      Float
+}
+
+model ReturnRecord {
+  id               Int            @id @default(autoincrement())
+  receiptNumber    String?
+  productVariantId Int
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  productId        String
+  productName      String
+  size             String
+  color            String
+  quantityReturned Int
+  reason           String?
+  returnTimestamp  DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+}
+
+model ActivityHistory {
+  id               Int             @id @default(autoincrement())
+  actionType       ActivityType
+  productVariantId Int?
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
+  userAccountId    Int?
+  userAccount      UserAccount?    @relation(fields: [userAccountId], references: [id], onDelete: SetNull)
+  productId        String
+  productName      String
+  size             String
+  color            String
+  quantityChanged  Int
+  note             String?
+  timestamp        DateTime        @default(now())
+}
+
+model UserAccount {
+  id        Int      @id @default(autoincrement())
+  name      String
+  pinHash   String   @unique
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  activities ActivityHistory[]
+}
+
+enum ActivityType {
+  STOCK_ADDED
+  SALE
+  RETURN
+}
+
+enum UserRole {
+  OWNER
+  STAFF
+}
